@@ -16,10 +16,11 @@ class Item:
     ``type`` is either ``"ammo"`` or ``"key"``.
     """
 
-    def __init__(self, maze: list[list[int]], item_type: str) -> None:
+    def __init__(self, maze: list[list[int]], item_type: str,
+                 hud_row: int = 2) -> None:
         self.type = item_type
         while True:
-            x, y = random.randint(1, COLS - 2), random.randint(1, ROWS - 2)
+            x, y = random.randint(1, COLS - 2), random.randint(hud_row, ROWS - 2)
             if maze[y][x] == 0:
                 break
         self.pos        = pygame.Vector2(x * TILE + 13, y * TILE + 13)
@@ -36,10 +37,30 @@ class Item:
         if self.type == "ammo":
             draw_glowing_circle(surf, C_AMMO, pos, 7, 8)
             label = fonts["sm"].render("A", True, C_BG)
-        else:
+            surf.blit(label, (pos[0] - 4, pos[1] - 7))
+        elif self.type == "key":
             draw_glowing_circle(surf, C_KEY, pos, 7, 8)
             label = fonts["sm"].render("K", True, C_BG)
-        surf.blit(label, (pos[0] - 4, pos[1] - 7))
+            surf.blit(label, (pos[0] - 4, pos[1] - 7))
+        elif self.type == "missile":
+            # Orange glowing diamond
+            col = (255, 120, 0)
+            t2  = pygame.time.get_ticks() / 300
+            bob2 = int(3 * math.sin(t2 + self._bob_phase))
+            mpos = (pos[0], pos[1] + bob2 - int(3 * math.sin(self._bob_phase)))
+            draw_glowing_circle(surf, col, mpos, 8, 10)
+            # Arrow pointing right (missile shape)
+            pts = [
+                (mpos[0] - 8, mpos[1] - 3),
+                (mpos[0] + 2, mpos[1] - 3),
+                (mpos[0] + 8, mpos[1]),
+                (mpos[0] + 2, mpos[1] + 3),
+                (mpos[0] - 8, mpos[1] + 3),
+            ]
+            pygame.draw.polygon(surf, col, pts)
+            pygame.draw.polygon(surf, (255, 220, 100), pts, 1)
+            lbl = fonts["sm"].render("M", True, C_BG)
+            surf.blit(lbl, (mpos[0] - 4, mpos[1] - 7))
 
 
 class Exit:
@@ -49,9 +70,9 @@ class Exit:
 
     REQUIRED_KEYS = 5
 
-    def __init__(self, maze: list[list[int]]) -> None:
+    def __init__(self, maze: list[list[int]], hud_row: int = 2) -> None:
         while True:
-            x, y = random.randint(COLS // 2, COLS - 2), random.randint(ROWS // 2, ROWS - 2)
+            x, y = random.randint(COLS // 2, COLS - 2), random.randint(max(ROWS // 2, hud_row), ROWS - 2)
             if maze[y][x] == 0:
                 break
         self.pos  = pygame.Vector2(x * TILE + 13, y * TILE + 13)

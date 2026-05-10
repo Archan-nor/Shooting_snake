@@ -11,6 +11,10 @@ TILE     = 26
 COLS     = W // TILE
 ROWS     = H // TILE
 
+# HUD bar height — walls are enforced for rows 0..PLAY_ROW_MIN-1
+HUD_H_CONST   = 44                      # must match hud.HUD_H
+PLAY_ROW_MIN  = HUD_H_CONST // TILE + 1 # first fully-playable tile row
+
 # ── Colours ──────────────────────────────────────────────────────────────────
 C_BG         = (5,   5,  15)
 C_WALL       = (20,  20,  50)

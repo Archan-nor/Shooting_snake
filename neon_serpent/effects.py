@@ -87,3 +87,47 @@ def burst(
     """Append *n* fresh particles at (x, y) into *particles*."""
     for _ in range(n):
         particles.append(Particle(x, y, color, speed, life))
+
+
+# ── Damage Numbers ────────────────────────────────────────────────────────────
+
+class DamageNumber:
+    """
+    Floating damage number that rises and fades out over ~0.8 s.
+    All damage numbers are white regardless of damage amount.
+    """
+    LIFETIME = 48   # frames (~0.8 s at 60 fps)
+
+    def __init__(self, x: float, y: float, amount: int) -> None:
+        self.x      = x
+        self.y      = y
+        self.amount = amount
+        self.life   = self.LIFETIME
+
+    def update(self) -> None:
+        self.y    -= 0.9   # float upward
+        self.life -= 1
+
+    def draw(self, surf: pygame.Surface, camera: "Camera",
+             fonts: dict) -> None:
+        if self.life <= 0:
+            return
+        t     = self.life / self.LIFETIME
+        alpha = int(255 * t)
+        size  = 18 + (self.amount >= 8) * 4   # bigger for heavy hits
+        fnt   = pygame.font.SysFont("consolas", size, bold=True)
+        txt   = fnt.render(f"-{self.amount}", True, (255, 255, 255))
+        txt.set_alpha(alpha)
+        px = int(self.x + camera.offset.x) - txt.get_width() // 2
+        py = int(self.y + camera.offset.y) - txt.get_height() // 2
+        surf.blit(txt, (px, py))
+
+
+def spawn_damage(dmg_numbers: list, x: float, y: float, amount: int) -> None:
+    """Append a new DamageNumber at world position (x, y)."""
+    import random
+    dmg_numbers.append(DamageNumber(
+        x + random.uniform(-8, 8),
+        y - 10,
+        amount,
+    ))

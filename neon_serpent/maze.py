@@ -4,7 +4,7 @@ Procedural maze generation (recursive back-tracker) and pre-rendered surface.
 """
 import random
 import pygame
-from .constants import W, H, TILE, COLS, ROWS, C_BG, C_WALL, C_WALL_LIT
+from .constants import W, H, TILE, COLS, ROWS, C_BG, C_WALL, C_WALL_LIT, PLAY_ROW_MIN
 
 
 def gen_maze() -> list[list[int]]:
@@ -25,23 +25,30 @@ def gen_maze() -> list[list[int]]:
                 grid[y + dy // 2][x + dx // 2] = 0
                 carve(nx, ny)
 
-    grid[1][1] = 0
-    carve(1, 1)
+    # Carve starting below HUD border rows
+    start_row = PLAY_ROW_MIN + 1
+    grid[start_row][1] = 0
+    carve(1, start_row)
 
-    # Enforce solid border
+    # Enforce solid top border (covers HUD area)
     for x in range(COLS):
-        grid[0][x]      = 1
-        grid[ROWS - 1][x] = 1
+        for y in range(PLAY_ROW_MIN):   # rows 0..PLAY_ROW_MIN-1 all solid
+            grid[y][x] = 1
+        grid[ROWS - 1][x] = 1          # bottom border
+
+    # Enforce solid left/right borders
     for y in range(ROWS):
-        grid[y][0]      = 1
+        grid[y][0]        = 1
         grid[y][COLS - 1] = 1
 
-    # Widen corridors with random clearing
+    # Widen corridors with random clearing (only below HUD)
     for _ in range(600):
-        grid[random.randint(1, ROWS - 2)][random.randint(1, COLS - 2)] = 0
+        ry = random.randint(PLAY_ROW_MIN, ROWS - 2)
+        rx = random.randint(1, COLS - 2)
+        grid[ry][rx] = 0
 
-    # Guarantee open spawn area
-    for y in range(1, 6):
+    # Guarantee open spawn area below HUD
+    for y in range(PLAY_ROW_MIN, PLAY_ROW_MIN + 5):
         for x in range(1, 6):
             grid[y][x] = 0
 
