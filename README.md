@@ -5,7 +5,7 @@ and a built-in analytics dashboard that visualises every run.
 
 ## Project Description
 
-- **Project by:** *(your name here)*
+- **Project by:** Archan Norsiri
 - **Game Genre:** Action, Arcade, Top-down Shooter
 
 You play as a glowing serpent that snakes through three procedurally generated

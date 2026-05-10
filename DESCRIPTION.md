@@ -47,8 +47,7 @@
 - **Proposal:** see [`proposal.pdf`](proposal.pdf).
 
 - **YouTube Presentation:** 
-
----
+  - https://youtu.be/FcMCyZwiP50
 
 ## 2. Concept
 
@@ -229,6 +228,154 @@ by the rubric.
 ---
 
 ## 6. Changed Proposed Features
+
+The final game diverges from the original proposal in several places.
+This section walks through the changes by section so a reviewer can compare
+them directly against the proposal document.
+
+### 6.0 Project name
+
+The proposal used the working title **"Shooting Snake — Snake Survival:
+Action-Based Data Analysis Game"**, which was descriptive but plain.
+The final game is titled **"Neon Serpent"** to better fit its visual identity
+(neon-glow palette, dark maze background, cinematic boss reveals) and to give
+the project a shorter, more memorable name suitable for the title screen,
+GitHub repository, and presentation video.
+
+### 6.1 Game concept and structure
+
+The proposal described **a single 2-minute survival round** in an open arena
+where the player accumulates score, with a "score penalty instead of full
+reset" on death.
+
+The final game replaces this with a **three-level structure with a defined
+ending**:
+
+- Levels 1 and 2 are procedurally generated mazes. The player must collect
+  **5 keys** to unlock the **EXIT** portal, then enter it to advance.
+- Level 3 has no keys or exit — it is a boss arena. The player must defeat
+  the multi-phase **Void Sovereign** to win the run.
+- A run ends in **WIN** (boss defeated) or **LOST** (all 10 lives gone).
+  There is no fixed time limit and no continuous score — instead, every
+  meaningful event (shots, hits, kills, damage taken/dealt, position) is
+  logged once per second.
+
+The 2-minute timer and the "score-penalty-instead-of-death" rule were
+dropped. The proposal's reviewer feedback about the "100 records per feature"
+rule was solved by switching to **per-second event recording inside one
+session** (typically 90–300 rows per run) rather than one row per session.
+
+### 6.2 Theme and core gameplay
+
+- The proposal's "classic Snake with food" was redesigned around **maze
+  exploration + combat**. Food and growth-on-collect were removed;
+  the snake has a fixed visual length and an **HP / lives** system instead.
+- A **dash** mechanic (right-click, 5 s cooldown, 2 s invincibility +
+  wall-phase) was added. The proposal did not mention dashing.
+- Shooting was upgraded with **lock-on aim** — the bullet steers toward the
+  nearest enemy or boss within 350 px, falling back to the cursor direction
+  if no target is in range. The proposal had cursor-only aim.
+
+### 6.3 Class design
+
+The proposal listed five classes: `Game`, `Snake`, `EnemySnake` (inheriting
+from `Snake`), `Food`, `Obstacle`. The final game has a different class set
+that fits the maze-shooter design:
+
+| Proposed     | Final equivalent                          |
+|--------------|-------------------------------------------|
+| `Game`       | `main.py` (loop) + `StatsTracker` (data)  |
+| `Snake`      | `Snake` (kept, but no growth-on-eat)      |
+| `EnemySnake` | `Enemy` and `Boss` (no inheritance — different behaviour) |
+| `Food`       | `Item` (ammo / key / missile pickups)     |
+| `Obstacle`   | replaced by maze walls (in `maze.py`)     |
+| —            | `Bullet`, `Camera`, `Particle`, `DamageNumber`, `Exit` (new) |
+
+The boss became its own class (`Boss`) rather than an `EnemySnake` subclass
+because its behaviour — three phases, knockback, summon waves, charged rifle —
+shares almost nothing with normal enemy AI.
+
+### 6.4 Boss design
+
+The proposal did not include a boss fight at all. The **Void Sovereign**
+(level 3) was added with three phases driven by HP thresholds:
+
+- **Phase 0 (HP 120–81)** — 8-way spiral bullet pattern.
+- **Phase 1 (HP 80–41)** — aimed 5-shot bursts, 6 orbiting orbs, summons
+  enemies on entry and periodically.
+- **Phase 2 (HP 40–0)** — dense 12-way spiral plus a charged **rifle attack**
+  every 13 s: 3 s aim with a red dashed line and countdown ring, then a
+  single wall-piercing bullet at 1.5× normal speed.
+
+An earlier draft used a rotating laser beam for phase 2 instead of the rifle;
+this was changed because the laser was hard to telegraph clearly within the
+maze, while the rifle's dashed aim line gives a much more readable warning.
+
+### 6.5 Statistical data
+
+The proposal listed six features (Time, Score, Food Collected, Shooting
+Count, Kill Count, Hit Accuracy, Death Count) recorded once per second for
+120 seconds.
+
+The final schema has **13 columns** per row, recorded once per second for
+the full duration of a run (no fixed 120-second cap):
+
+`session_id, t, level, hp, lives, pos_x, pos_y, shots, hits, dmg_dealt,
+dmg_taken, kills, event`
+
+Key differences:
+
+- **No "Score" column** — the game no longer has a continuous score. The
+  KPI panel computes outcome, survival time, accuracy, kills, and deaths
+  directly from the per-second columns.
+- **Counters are per-second deltas, not cumulative** — this makes histograms
+  and bar charts (like Graph A: shots-per-20-second-window) trivial to
+  compute, and cumulative views remain easy to derive by summing.
+- **`pos_x` / `pos_y` were added** to enable the movement heatmap (Graph B).
+- **`dmg_dealt` / `dmg_taken` were added** to enable the damage-balance
+  stacked area (Graph C).
+- **`event` column** captures one-off markers (`lost_life`,
+  `key_collected`, `ammo_collected`, `missile_hit`, `victory`,
+  `game_over:CAUSE`) used by the timeline's vertical markers.
+
+### 6.6 Visualisation plan
+
+The proposal's three planned charts (Score-vs-Time line, Hit-Accuracy
+histogram, Shooting-vs-Kill scatter) became a **5-KPI + 4-chart dashboard**:
+
+| Proposed                           | Final                                      |
+|------------------------------------|--------------------------------------------|
+| Score vs Time (line)               | **Performance Timeline** — HP/Lives line + cumulative kills line + level bands + event markers (covers time-series category) |
+| Hit-Accuracy histogram             | **Graph A — Shooting Activity** (shots per 20 s, bar)  |
+| Shooting-vs-Kill scatter           | **Graph B — Movement Heatmap** (pos_x × pos_y, scatter) |
+| —                                  | **Graph C — Damage Balance** (10 s windows, stacked area) — new |
+| —                                  | **5 KPI cards** — Outcome (with death cause), Survived, Accuracy, Kills, Deaths |
+
+Hit accuracy moved from a chart to a KPI card (a single number is more
+informative than a histogram for a single session). The shooting-vs-kill
+scatter was dropped because the timeline's cumulative-kills line already
+shows the same information across time. The movement heatmap and damage
+balance were added because they answer behavioural questions ("where did I
+hide?", "when did the fight tip against me?") that were not addressed in
+the original plan.
+
+### 6.7 Other additions not in the proposal
+
+- **Pause menu** (ESC) with Resume / Tutorial / Quit-to-Menu / Quit-Game
+  options, including a clear warning that quitting mid-run discards the
+  session's stats.
+- **Tutorial scene** accessible from the main menu and the pause menu.
+- **Level-transition screen** showing 3 indicator nodes (two circles + a
+  skull for the boss) and the player's carried-over stats, displayed for
+  4 seconds before each level.
+- **Phase-transition cinematic** with shockwave + ray + name reveal,
+  played for 2 seconds when the boss enters a new phase. Enemies and the
+  boss freeze during it; the player can still move.
+- **Damage numbers** that float and fade above any target that takes a
+  hit (`-1` for bullets, `-8` for missiles).
+- **Session retention policy** — the latest 5 completed sessions are kept
+  on disk; older sessions are trimmed automatically. Quitting mid-run does
+  not save.
 
 ---
 
